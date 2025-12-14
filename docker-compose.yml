@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    container_name: api-gateway # Beri nama container
+    image: nginx:alpine # Image yang akan digunakan nginx versi alpine
+    ports: # Port yang akan digunakan
+      - "8081:80"
+    volumes: # Isi dari container
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on: # Jalankan setelah
+      - auth-service
+      - acad-service
+    networks: # Jaringan yang digunakan
+      - projek_akso-network
+
+  auth-service:
+    container_name: auth-service # Beri nama container
+    build: ./auth-service # Hubungkan ke Dockerfile
+    ports: # Port yang akan digunakan
+      - "3001:3001"
+    environment: # Variabel lingkungan
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGO_URI=mongodb://auth-db:27017/auth
+      - JWT_SECRET=0e0beb50569f3439
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5' # Batasi penggunaan CPU menjadi 0.5
+          memory: 512M # Batasi penggunaan memori menjadi 512MB
+    volumes: # Isi dari container
+      - ./auth-service:/app
+      - /app/node_modules
+    depends_on: # Jalankan setelah
+      - auth-db
+    networks: # Jaringan yang digunakan
+      - projek_akso-network
+
+  auth-db:
+    container_name: auth-db # Beri nama container
+    image: mongo:6.0 # Image yang akan digunakan mongo versi 6.0
+    volumes: # Isi dari container
+      - auth-data:/data/db
+    networks: # Jaringan yang digunakan
+      - projek_akso-network
+    restart: always # Selalu restart jika container berhenti
+
+  acad-service:
+    container_name: acad-service # Beri nama container
+    build: ./acad-service # Hubungkan ke Dockerfile
+    ports: # Port yang akan digunakan
+      - "3002:3002"
+    environment: # Variabel lingkungan
+      - DB_HOST=acad-db
+      - DB_PORT=5432
+      - DB_NAME=products
+      - DB_USER=productuser
+      - DB_PASSWORD=productpass
+    depends_on: # Jalankan setelah
+      - acad-db
+    networks: # Jaringan yang digunakan
+      - projek_akso-network
+
+  acad-db:
+    container_name: acad-db # Beri nama container
+    image: postgres:15-alpine # Image yang akan digunakan postgres versi 15-alpine
+    environment: # Variabel lingkungan
+      - POSTGRES_DB=products
+      - POSTGRES_USER=productuser
+      - POSTGRES_PASSWORD=productpass
+    volumes: # Isi dari container
+      - ./acad-service/db_kelas.sql:/docker-entrypoint-initdb.d/init.sql
+      - product-data:/var/lib/postgresql/data
+    networks: # Jaringan yang digunakan
+      - projek_akso-network
+
+networks:
+  projek_akso-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/28 # IP yang digunakan
+
+volumes:
+  auth-data:
+  product-data:
