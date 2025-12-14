@@ -68,7 +68,31 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
-@app.get("/api/acad/mahasiswa")
+# Tambah fitur menambahkan Mahasiswa
+@app.post("/api/acad/tambah_mahasiswa", response_model=Mahasiswa)
+async def add_mahasiswa(
+    nim: str = Query(..., description="Nomor Induk Mahasiswa"),
+    nama: str = Query(..., description="Nama lengkap mahasiswa"),
+    jurusan: str = Query(..., description="Jurusan mahasiswa"),
+    angkatan: int = Query(..., ge=2000, description="Tahun angkatan mahasiswa")
+):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            query = "INSERT INTO mahasiswa (nim, nama, jurusan, angkatan) VALUES (%s, %s, %s, %s)"
+            values = (nim, nama, jurusan, angkatan)
+
+            cursor.execute(query, values)
+            # Commit perubahan ke database agar tersimpan permanen
+            conn.commit()
+
+            # Mengembalikan data yang baru saja ditambahkan sesuai format response_model
+            return {"nim": nim, "nama": nama, "jurusan": jurusan, "angkatan": angkatan,"\n Berhasil ditambahkan" : True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/acad/cek_mahasiswa")
 async def get_mahasiswas():
     try:
         with get_db_connection() as conn:
@@ -79,12 +103,28 @@ async def get_mahasiswas():
             cursor.execute(query)
             rows = cursor.fetchall()
 
-            return [{"nim": row[0], "nama": row[1], "jurusan": row[2], "angkatan": row[3]} for row in rows]
+            return [{"NIM": row[0], "Nama": row[1], "Jurusan": row[2], "Angkatan": row[3]} for row in rows]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Tambah fitur tampilkan mata kuliah
+@app.get("/api/acad/mata_kuliah")
+async def get_mata_kuliah():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
+            query = "SELECT * FROM mata_kuliah"
+
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            return [{"Kode": row[0], "Mata Kuliah": row[1], "SKS": row[2]} for row in rows]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     
-@app.get("/api/acad/ips")
-async def calculate_ips(nim: str, semester: int):
+@app.get("/api/acad/cek_ips")
+async def hitung_ips(nim: str, semester: int):
     """
     Menghitung Indeks Prestasi Semester (IPS) untuk seorang mahasiswa pada semester tertentu.
     """
@@ -93,38 +133,30 @@ async def calculate_ips(nim: str, semester: int):
             # Menggunakan RealDictCursor untuk mendapatkan hasil sebagai dictionary
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-            # 1. Ambil data mahasiswa untuk validasi dan untuk disertakan dalam respons
+            # Ambil data mahasiswa untuk validasi dan untuk disertakan dalam respons
             cursor.execute("SELECT nim, nama, jurusan, angkatan FROM mahasiswa WHERE nim = %s", (nim,))
             mahasiswa = cursor.fetchone()
 
             if not mahasiswa:
                 raise HTTPException(status_code=404, detail=f"Mahasiswa dengan NIM {nim} tidak ditemukan.")
 
-            # 2. Query untuk menghitung total (bobot * sks) dan total sks secara efisien
-            #    JOIN dengan tabel bobot_nilai untuk konversi nilai huruf ke angka
-            query = """
-                SELECT 
-                    SUM(bn.bobot * mk.sks) AS total_nilai_bobot,
-                    SUM(mk.sks) AS total_sks
-                FROM krs
-                JOIN mata_kuliah mk ON krs.kode_mk = mk.kode_mk
-                JOIN bobot_nilai bn ON krs.nilai = bn.nilai
-                WHERE krs.nim = %s AND krs.semester = %s;
-            """
+            # Query untuk menghitung total (bobot * sks) dan total sks secara efisien
+            # JOIN dengan tabel bobot_nilai untuk konversi nilai huruf ke angka
+            query = "SELECT SUM(bn.bobot * mk.sks) AS total_nilai_bobot, SUM(mk.sks) AS total_sks FROM krs JOIN mata_kuliah mk ON krs.kode_mk = mk.kode_mk JOIN bobot_nilai bn ON krs.nilai = bn.nilai WHERE krs.nim = %s AND krs.semester = %s;"
             cursor.execute(query, (nim, semester))
             result = cursor.fetchone()
 
-            # 3. Handle jika tidak ada data KRS untuk semester tersebut (mencegah division by zero)
+            # Handle jika tidak ada data KRS untuk semester tersebut (mencegah dibagi bilangan nol)
             if not result or result['total_sks'] is None or result['total_sks'] == 0:
-                return {**mahasiswa, "semester": semester, "ips": 0.0, "message": "Tidak ada data KRS untuk semester ini."}
+                return {**mahasiswa, "Semester": semester, "IPS": 0.0, "message": "Tidak ada data KRS untuk semester ini."}
 
             total_nilai_bobot = result['total_nilai_bobot']
             total_sks = result['total_sks']
 
-            # 4. Hitung IPS dan kembalikan hasilnya
+            # Hitung IPS dan kembalikan hasilnya
             ips = total_nilai_bobot / total_sks
 
-            return {**mahasiswa, "semester": semester, "ips": round(ips, 2)}
+            return {**mahasiswa, "Semester": semester, "IPS": round(ips, 2)}
 
     except HTTPException as he:
         raise he
