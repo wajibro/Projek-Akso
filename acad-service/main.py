@@ -161,7 +161,7 @@ async def get_all_mahasiswa():
         raise HTTPException(status_code=500, detail=str(e))
 
 # Fitur untuk menampilkan mata kuliah dengan filter opsional
-@app.get("/api/acad/mata-kuliah")
+@app.get("/api/acad/mata_kuliah")
 async def get_mata_kuliah_filtered(
     semester: Optional[int] = Query(None),
     jurusan: Optional[str] = Query(None)
