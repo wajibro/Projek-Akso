@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import Optional, List
 import psycopg2
@@ -18,6 +20,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Database configuration
 DB_CONFIG = {
@@ -60,30 +65,29 @@ async def startup_event():
     except Exception as e:
         print(f"Acad Service: PostgreSQL connection error: {e}")
 
-# Health check
-@app.get("/health")
-async def health_check():
-    return {
-        "status": "Acad Service is running",
-        "timestamp": datetime.now().isoformat()
-    }
+# Root endpoint to serve the HTML UI
+@app.get("/")
+async def read_root():
+    return FileResponse('static/index.html')
 
 # Tambah fitur menambahkan Mahasiswa
-@app.post("/api/acad/tambah_mahasiswa", response_model=Mahasiswa)
+@app.post("/api/acad/tambah_mahasiswa")
 async def add_mahasiswa(
-    nim: str = Query(..., description="Nomor Induk Mahasiswa"),
-    nama: str = Query(..., description="Nama lengkap mahasiswa"),
-    jurusan: str = Query(..., description="Jurusan mahasiswa"),
-    angkatan: int = Query(..., ge=2000, description="Tahun angkatan mahasiswa")
+    nim: str = Query(...),
+    nama: str = Query(...),
+    jurusan: str = Query(...),
+    angkatan: int = Query(...)
 ):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
             
+            # Masukkan ke tabel mahasiswa yaitu (nim, nama, jurusan, angkatan)
             query = "INSERT INTO mahasiswa (nim, nama, jurusan, angkatan) VALUES (%s, %s, %s, %s)"
             values = (nim, nama, jurusan, angkatan)
 
             cursor.execute(query, values)
+
             # Commit perubahan ke database agar tersimpan permanen
             conn.commit()
 
@@ -92,18 +96,43 @@ async def add_mahasiswa(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Tambah fitur cek data Mahasiswa berdasarkan NIM
 @app.get("/api/acad/cek_mahasiswa")
-async def get_mahasiswas():
+async def get_mahasiswa_by_nim(nim: str):
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
             
-            query = "SELECT * FROM mahasiswa"
+            # Ambil nim, nama, jurusan, angkatan dari tabel mahasiswa berdasarkan nim
+            query = "SELECT nim, nama, jurusan, angkatan FROM mahasiswa WHERE nim = %s"
+
+            cursor.execute(query, (nim,))
+
+            # Menggunakan fetchone untuk mendapatkan satu baris hasil
+            mahasiswa = cursor.fetchone()
+
+            if not mahasiswa:
+                raise HTTPException(status_code=404, detail=f"Mahasiswa dengan NIM {nim} tidak ditemukan.")
+            
+            # Kembalikan data mahasiswa
+            return mahasiswa 
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/acad/daftar_mahasiswa")
+async def get_all_mahasiswa():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+
+            # Ambil nim, nama, jurusan, angkatan dari tabel mahasiswa diurutkan berdasarkan angkatan descending dan nama ascending
+            query = "SELECT nim, nama, jurusan, angkatan FROM mahasiswa ORDER BY angkatan DESC, nama ASC"
 
             cursor.execute(query)
             rows = cursor.fetchall()
-
-            return [{"NIM": row[0], "Nama": row[1], "Jurusan": row[2], "Angkatan": row[3]} for row in rows]
+            return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -114,6 +143,7 @@ async def get_mata_kuliah():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             
+            # Ambil semua yang ada di tabel mata_kuliah
             query = "SELECT * FROM mata_kuliah"
 
             cursor.execute(query)
@@ -125,15 +155,11 @@ async def get_mata_kuliah():
     
 @app.get("/api/acad/cek_ips")
 async def hitung_ips(nim: str, semester: int):
-    """
-    Menghitung Indeks Prestasi Semester (IPS) untuk seorang mahasiswa pada semester tertentu.
-    """
     try:
         with get_db_connection() as conn:
-            # Menggunakan RealDictCursor untuk mendapatkan hasil sebagai dictionary
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
-            # Ambil data mahasiswa untuk validasi dan untuk disertakan dalam respons
+            # Ambil nim, nama, jurusan, angkatan dari tabel mahasiswa berdasarkan nim
             cursor.execute("SELECT nim, nama, jurusan, angkatan FROM mahasiswa WHERE nim = %s", (nim,))
             mahasiswa = cursor.fetchone()
 
