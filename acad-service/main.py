@@ -23,9 +23,9 @@ app.add_middleware(
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
     'port': os.getenv('DB_PORT', '5432'),
-    'database': os.getenv('DB_NAME', 'products'),
-    'user': os.getenv('DB_USER', 'productuser'),
-    'password': os.getenv('DB_PASSWORD', 'productpass')
+    'database': os.getenv('DB_NAME', 'acad_db'),
+    'user': os.getenv('DB_USER', 'projek_akso'), 
+    'password': os.getenv('DB_PASSWORD', 'projek_akso_cihuy')
 }
 
 def row_to_dict(row):
@@ -78,9 +78,6 @@ async def add_mahasiswa(
 
             cursor.execute(query, values)
 
-            # Commit perubahan ke database agar tersimpan permanen
-            conn.commit()
-
             # Mengembalikan data yang baru saja ditambahkan sesuai format response_model
             return {"nim": nim, "nama": nama, "jurusan": jurusan, "angkatan": angkatan,"\n Berhasil ditambahkan" : True}
     except Exception as e:
@@ -113,8 +110,6 @@ async def add_krs(
             values = (nim, kode_mk, nilai, semester)
             cursor.execute(query, values)
             new_krs_id = cursor.fetchone()[0]
-
-            conn.commit()
 
             return {"id_krs": new_krs_id, "nim": nim, "kode_mk": kode_mk, "nilai": nilai, "semester": semester, "message": "KRS berhasil ditambahkan"}
     except HTTPException as he:
@@ -160,26 +155,44 @@ async def get_all_mahasiswa():
             cursor.execute(query)
             rows = cursor.fetchall()
             return rows
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Tambah fitur tampilkan mata kuliah
-@app.get("/api/acad/mata_kuliah")
-async def get_mata_kuliah():
+# Fitur untuk menampilkan mata kuliah dengan filter opsional
+@app.get("/api/acad/mata-kuliah")
+async def get_mata_kuliah_filtered(
+    semester: Optional[int] = Query(None),
+    jurusan: Optional[str] = Query(None)
+):
     try:
         with get_db_connection() as conn:
-            cursor = conn.cursor()
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
             
-            # Ambil semua yang ada di tabel mata_kuliah
-            query = "SELECT * FROM mata_kuliah"
+            query = "SELECT kode_mk, nama_mk, sks, semester, jurusan FROM mata_kuliah"
+            filters = []
+            params = []
 
-            cursor.execute(query)
+            if semester is not None:
+                filters.append("semester = %s")
+                params.append(semester)
+            
+            if jurusan:
+                filters.append("jurusan = %s")
+                params.append(jurusan)
+
+            if filters:
+                query += " WHERE " + " AND ".join(filters)
+            
+            query += " ORDER BY semester, nama_mk;"
+
+            cursor.execute(query, tuple(params))
             rows = cursor.fetchall()
-
-            return [{"Kode": row[0], "Mata Kuliah": row[1], "SKS": row[2]} for row in rows]
+            return rows
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    
+
 @app.get("/api/acad/cek_ips")
 async def hitung_ips(nim: str, semester: int):
     try:
@@ -203,8 +216,8 @@ async def hitung_ips(nim: str, semester: int):
             if not result or result['total_sks'] is None or result['total_sks'] == 0:
                 return {**mahasiswa, "Semester": semester, "IPS": 0.0, "message": "Tidak ada data KRS untuk semester ini."}
 
-            total_nilai_bobot = result['total_nilai_bobot']
             total_sks = result['total_sks']
+            total_nilai_bobot = result['total_nilai_bobot']
 
             # Hitung IPS dan kembalikan hasilnya
             ips = total_nilai_bobot / total_sks

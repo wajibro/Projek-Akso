@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   api-gateway:
     container_name: api-gateway # Beri nama container
@@ -52,9 +53,9 @@ services:
     environment: # Variabel lingkungan
       - DB_HOST=acad-db
       - DB_PORT=5432
-      - DB_NAME=products
-      - DB_USER=productuser
-      - DB_PASSWORD=productpass
+      - DB_NAME=acad_db
+      - DB_USER=projek_akso
+      - DB_PASSWORD=projek_akso_cihuy
     depends_on: # Jalankan setelah
       - acad-db
     networks: # Jaringan yang digunakan
@@ -64,12 +65,12 @@ services:
     container_name: acad-db # Beri nama container
     image: postgres:15-alpine # Image yang akan digunakan postgres versi 15-alpine
     environment: # Variabel lingkungan
-      - POSTGRES_DB=products
-      - POSTGRES_USER=productuser
-      - POSTGRES_PASSWORD=productpass
+      - POSTGRES_DB=acad_db
+      - POSTGRES_USER=projek_akso
+      - POSTGRES_PASSWORD=projek_akso_cihuy
     volumes: # Isi dari container
       - ./acad-service/db_kelas.sql:/docker-entrypoint-initdb.d/init.sql
-      - product-data:/var/lib/postgresql/data
+      - acad-data:/var/lib/postgresql/data
     networks: # Jaringan yang digunakan
       - projek_akso-network
 
@@ -82,4 +83,4 @@ networks:
 
 volumes:
   auth-data:
-  product-data:
+  acad-data:
