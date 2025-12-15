@@ -86,6 +86,43 @@ async def add_mahasiswa(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Tambah fitur tambah KRS
+@app.post("/api/acad/tambah_krs")
+async def add_krs(
+    nim: str = Query(...,),
+    kode_mk: str = Query(...),
+    nilai: str = Query(...),
+    semester: int = Query(...)
+):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Periksa apakah mahasiswa dengan NIM tersebut ada
+            cursor.execute("SELECT nim FROM mahasiswa WHERE nim = %s", (nim,))
+            if cursor.fetchone() is None:
+                raise HTTPException(status_code=404, detail=f"Mahasiswa dengan NIM {nim} tidak ditemukan.")
+
+            # Periksa apakah mata kuliah dengan kode_mk tersebut ada
+            cursor.execute("SELECT kode_mk FROM mata_kuliah WHERE kode_mk = %s", (kode_mk,))
+            if cursor.fetchone() is None:
+                raise HTTPException(status_code=404, detail=f"Mata kuliah dengan kode {kode_mk} tidak ditemukan.")
+
+            # Masukkan data ke tabel krs
+            query = "INSERT INTO krs (nim, kode_mk, nilai, semester) VALUES (%s, %s, %s, %s) RETURNING id_krs"
+            values = (nim, kode_mk, nilai, semester)
+            cursor.execute(query, values)
+            new_krs_id = cursor.fetchone()[0]
+
+            conn.commit()
+
+            return {"id_krs": new_krs_id, "nim": nim, "kode_mk": kode_mk, "nilai": nilai, "semester": semester, "message": "KRS berhasil ditambahkan"}
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Tambah fitur cek data Mahasiswa berdasarkan NIM
 @app.get("/api/acad/cek_mahasiswa")
 async def get_mahasiswa_by_nim(nim: str):
