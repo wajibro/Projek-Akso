@@ -65,11 +65,6 @@ async def startup_event():
     except Exception as e:
         print(f"Acad Service: PostgreSQL connection error: {e}")
 
-# Root endpoint to serve the HTML UI
-@app.get("/")
-async def read_root():
-    return FileResponse('static/index.html')
-
 # Tambah fitur menambahkan Mahasiswa
 @app.post("/api/acad/tambah_mahasiswa")
 async def add_mahasiswa(
