@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   api-gateway:
     container_name: api-gateway # Beri nama container
@@ -17,7 +19,7 @@ services:
     build: ./auth-service # Hubungkan ke Dockerfile
     ports: # Port yang akan digunakan
       - 3001:3001
-    environment: # Variabel lingkungan
+    environment: # Variabel yang sama dengan server.js
       NODE_ENV: development
       PORT: 3001
       MONGO_URI: mongodb://auth-db:27017/auth

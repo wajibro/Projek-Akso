@@ -68,7 +68,7 @@ async def health_check():
     }
 
 # Tambah fitur menambahkan Mahasiswa
-@app.post("/tambah_mahasiswa")
+@app.post("/api/acad/tambah_mahasiswa")
 async def add_mahasiswa(
     nim: str = Query(...),
     nama: str = Query(...),
@@ -101,16 +101,6 @@ async def add_krs(
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-
-            # Periksa apakah mahasiswa dengan NIM tersebut ada
-            cursor.execute("SELECT nim FROM mahasiswa WHERE nim = %s", (nim,))
-            if cursor.fetchone() is None:
-                raise HTTPException(status_code=404, detail=f"Mahasiswa dengan NIM {nim} tidak ditemukan.")
-
-            # Periksa apakah mata kuliah dengan kode_mk tersebut ada
-            cursor.execute("SELECT kode_mk FROM mata_kuliah WHERE kode_mk = %s", (kode_mk,))
-            if cursor.fetchone() is None:
-                raise HTTPException(status_code=404, detail=f"Mata kuliah dengan kode {kode_mk} tidak ditemukan.")
 
             # Masukkan data ke tabel krs
             query = "INSERT INTO krs (nim, kode_mk, nilai, semester) VALUES (%s, %s, %s, %s) RETURNING id_krs"
