@@ -30,7 +30,6 @@ CREATE TABLE bobot_nilai (
 
 INSERT INTO mahasiswa (nim, nama, jurusan, angkatan) VALUES
 ('25031554020', 'ANINDYA SARASWATI AYU DEWAYANI', 'Sains Data', 2025),
-('25031554204', 'ALIA NURUL DZIHNI', 'Sains Data', 2025),
 ('25031554200', 'LUTFI MUHAMMAD IRFANSYACH', 'Sains Data', 2025);
 
 -- ========== Mata Kuliah Sains Data ==========
@@ -74,27 +73,6 @@ INSERT INTO krs (nim, kode_mk, nilai, semester) VALUES
 ('25031554020', 'SD206', 'C+', 2),
 ('25031554020', 'SD207', 'B', 2),
 ('25031554020', 'SD208', 'A', 2);
-
--- ========== 25031554204 ==========
--- Semester 1
-INSERT INTO krs (nim, kode_mk, nilai, semester) VALUES
-('25031554204', 'SD101', 'A', 1),
-('25031554204', 'SD102', 'A', 1),
-('25031554204', 'SD103', 'B+', 1),
-('25031554204', 'SD104', 'B', 1),
-('25031554204', 'SD105', 'A', 1),
-('25031554204', 'SD106', 'A', 1),
-('25031554204', 'SD107', 'B+', 1);
--- Semester 2
-INSERT INTO krs (nim, kode_mk, nilai, semester) VALUES
-('25031554204', 'SD201', 'A', 2),
-('25031554204', 'SD202', 'A', 2),
-('25031554204', 'SD203', 'B', 2),
-('25031554204', 'SD204', 'B', 2),
-('25031554204', 'SD205', 'A', 2),
-('25031554204', 'SD206', 'B+', 2),
-('25031554204', 'SD207', 'A', 2),
-('25031554204', 'SD208', 'B+', 2);
 
 -- ========== 25031554200 ==========
 -- Semester 1

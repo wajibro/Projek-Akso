@@ -60,8 +60,15 @@ async def startup_event():
     except Exception as e:
         print(f"Acad Service: PostgreSQL connection error: {e}")
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "Layanan Acad sedang berjalan",
+        "timestamp": datetime.now().isoformat()
+    }
+
 # Tambah fitur menambahkan Mahasiswa
-@app.post("/api/acad/tambah_mahasiswa")
+@app.post("/tambah_mahasiswa")
 async def add_mahasiswa(
     nim: str = Query(...),
     nama: str = Query(...),
@@ -78,15 +85,15 @@ async def add_mahasiswa(
 
             cursor.execute(query, values)
 
-            # Mengembalikan data yang baru saja ditambahkan sesuai format response_model
-            return {"nim": nim, "nama": nama, "jurusan": jurusan, "angkatan": angkatan,"\n Berhasil ditambahkan" : True}
+            # Mengembalikan data yang baru saja ditambahkan
+            return {"nim": nim, "nama": nama, "jurusan": jurusan, "angkatan": angkatan, "message" : "Data Mahasiswa berhasil ditambahkan"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # Tambah fitur tambah KRS
 @app.post("/api/acad/tambah_krs")
 async def add_krs(
-    nim: str = Query(...,),
+    nim: str = Query(...),
     kode_mk: str = Query(...),
     nilai: str = Query(...),
     semester: int = Query(...)
@@ -163,8 +170,8 @@ async def get_all_mahasiswa():
 # Fitur untuk menampilkan mata kuliah dengan filter opsional
 @app.get("/api/acad/mata_kuliah")
 async def get_mata_kuliah_filtered(
-    semester: Optional[int] = Query(None),
-    jurusan: Optional[str] = Query(None)
+    semester: int,
+    jurusan: str
 ):
     try:
         with get_db_connection() as conn:
@@ -206,21 +213,24 @@ async def hitung_ips(nim: str, semester: int):
             if not mahasiswa:
                 raise HTTPException(status_code=404, detail=f"Mahasiswa dengan NIM {nim} tidak ditemukan.")
 
-            # Query untuk menghitung total (bobot * sks) dan total sks secara efisien
-            # JOIN dengan tabel bobot_nilai untuk konversi nilai huruf ke angka
-            query = "SELECT SUM(bn.bobot * mk.sks) AS total_nilai_bobot, SUM(mk.sks) AS total_sks FROM krs JOIN mata_kuliah mk ON krs.kode_mk = mk.kode_mk JOIN bobot_nilai bn ON krs.nilai = bn.nilai WHERE krs.nim = %s AND krs.semester = %s;"
-            cursor.execute(query, (nim, semester))
-            result = cursor.fetchone()
+            # Query untuk menghitung total (bobot * sks)
+            query_nilai = "SELECT SUM(bn.bobot * mk.sks) AS total_nilai_bobot FROM krs JOIN mata_kuliah mk ON krs.kode_mk = mk.kode_mk JOIN bobot_nilai bn ON krs.nilai = bn.nilai WHERE krs.nim = %s AND krs.semester = %s;"
+            cursor.execute(query_nilai, (nim, semester))
+            result_nilai = cursor.fetchone()
+            total_bobot_nilai = result_nilai['total_nilai_bobot'] if result_nilai and result_nilai['total_nilai_bobot'] is not None else 0
 
+            # Query untuk menghitung total sks
+            query_sks = "SELECT SUM(mk.sks) AS total_sks FROM krs JOIN mata_kuliah mk ON krs.kode_mk = mk.kode_mk JOIN bobot_nilai bn ON krs.nilai = bn.nilai WHERE krs.nim = %s AND krs.semester = %s;"
+            cursor.execute(query_sks, (nim, semester))
+            result_sks = cursor.fetchone()
+            total_sks = result_sks['total_sks'] if result_sks and result_sks['total_sks'] is not None else 0
+            
             # Handle jika tidak ada data KRS untuk semester tersebut (mencegah dibagi bilangan nol)
-            if not result or result['total_sks'] is None or result['total_sks'] == 0:
+            if total_sks == 0:
                 return {**mahasiswa, "Semester": semester, "IPS": 0.0, "message": "Tidak ada data KRS untuk semester ini."}
 
-            total_sks = result['total_sks']
-            total_nilai_bobot = result['total_nilai_bobot']
-
             # Hitung IPS dan kembalikan hasilnya
-            ips = total_nilai_bobot / total_sks
+            ips = total_bobot_nilai / total_sks
 
             return {**mahasiswa, "Semester": semester, "IPS": round(ips, 2)}
 

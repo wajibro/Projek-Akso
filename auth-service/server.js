@@ -30,7 +30,7 @@ mongoose.connect(MONGO_URI)
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'Auth Service is running', timestamp: new Date() });
+  res.json({ status: 'Layanan Auth sedang berjalan', timestamp: new Date() });
 });
 
 // Register

@@ -1,10 +1,9 @@
-version: '3.8'
 services:
   api-gateway:
     container_name: api-gateway # Beri nama container
     image: nginx:alpine # Image yang akan digunakan nginx versi alpine
     ports: # Port yang akan digunakan
-      - "8081:80"
+      - 8081:80
     volumes: # Isi dari container
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on: # Jalankan setelah
@@ -17,12 +16,12 @@ services:
     container_name: auth-service # Beri nama container
     build: ./auth-service # Hubungkan ke Dockerfile
     ports: # Port yang akan digunakan
-      - "3001:3001"
+      - 3001:3001
     environment: # Variabel lingkungan
-      - NODE_ENV=development
-      - PORT=3001
-      - MONGO_URI=mongodb://auth-db:27017/auth
-      - JWT_SECRET=0e0beb50569f3439
+      NODE_ENV: development
+      PORT: 3001
+      MONGO_URI: mongodb://auth-db:27017/auth
+      JWT_SECRET: 0e0beb50569f3439
     deploy:
       resources:
         limits:
@@ -51,11 +50,11 @@ services:
     ports: # Port yang akan digunakan
       - "3002:3002"
     environment: # Variabel lingkungan
-      - DB_HOST=acad-db
-      - DB_PORT=5432
-      - DB_NAME=acad_db
-      - DB_USER=projek_akso
-      - DB_PASSWORD=projek_akso_cihuy
+      DB_HOST: acad-db
+      DB_PORT: 5432
+      DB_NAME: acad_db
+      DB_USER: projek_akso
+      DB_PASSWORD: projek_akso_cihuy
     depends_on: # Jalankan setelah
       - acad-db
     networks: # Jaringan yang digunakan
@@ -65,9 +64,9 @@ services:
     container_name: acad-db # Beri nama container
     image: postgres:15-alpine # Image yang akan digunakan postgres versi 15-alpine
     environment: # Variabel lingkungan
-      - POSTGRES_DB=acad_db
-      - POSTGRES_USER=projek_akso
-      - POSTGRES_PASSWORD=projek_akso_cihuy
+      POSTGRES_DB: acad_db
+      POSTGRES_USER: projek_akso
+      POSTGRES_PASSWORD: projek_akso_cihuy
     volumes: # Isi dari container
       - ./acad-service/db_kelas.sql:/docker-entrypoint-initdb.d/init.sql
       - acad-data:/var/lib/postgresql/data
