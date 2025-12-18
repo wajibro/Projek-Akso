@@ -1,5 +1,5 @@
 
-# 🎓 Projek Akso - Sistem Akademik Mikroservis
+# 🎓 Sistem Akademik Mikroservis - UAS Mata Kuliah Akso
 
 Selamat datang di **Projek Akso**! Tugas UAS dengan sistem informasi akademik sederhana yang dibangun dengan arsitektur mikroservis.
 
